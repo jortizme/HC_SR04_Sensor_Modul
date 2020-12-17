@@ -28,53 +28,52 @@ end entity HC_SR04;
 architecture rtl of HC_SR04 is
 
     signal count_10us_s             : std_logic;
-    signal trigger_sensor_s         . std_logic := '1';         --  In Rechenwerk an den output zuweisen!!
     signal trigger_done_s           : std_logic := '0';
     signal next_measure_allowed_s   : std_logic := '0';
     signal wait_sound_sending_s     : std_logic;
     signal sound_sent_s             : std_logic := '0';
     signal count_travel_time_s      : std_logic;
     signal count_failure_s          : std_logic := '0';
-    signal stop_counting_travel_s     : std_logic;
+    signal stop_counting_travel_s   : std_logic;
     signal start_input_1dl_s        : std_logic := '0';
     signal start_input_2dl_s        : std_logic := '0';
+    signal count_period_20ms_s      : std_logic;
+    signal clear_20ms_signal_s      : std_logic;
 
 begin
 
     --To ensure that the signal remains stable, because it comes from outside
-    start_input_1dl_s <= start_sensor_i;                                        --DOUBT
-    start_input_2dl_s <= start_input_1dl_s;
-    echo_input_s      <= echo_sensor_i;
-
+    process( clk_i )
+    begin
+        if rising_edge(clk_i) then
+            start_input_1dl_s <= start_sensor_i;                                        
+            start_input_2dl_s <= start_input_1dl_s; --Vieleicht ein debouncer implementieren???!!!!!
+            echo_input_s      <= echo_sensor_i;
+        end if;  
+    end process ;  
 
     Rechenwerk: block
 
-        signal count_time20ms_s      : std_logic := '0';
-        signal count_time20ms_dl_s   : std_logic;
-        signal calculate_time_s      : std_logic :='0';
+        
         signal time_measured_s       : std_logic_vector(19 downto 0) = (others => '0');
 
         --Counting until 499 with a clock frequency of 50 MHz ensures a 10us waiting time
         Trigger_Cnt : process( clk_i )
         counter_v   :   unsigned(8 downto 0) := (others => '0');
         begin
+            if rising_edge(clk_i) then 
 
-            trigger_done_s <= '0';
-            count_time20ms_s <= '0';
-
-            if rst_i = '1' then
-                counter_v := (others => '0');
-
-            elsif count_10us_s = '1' then
-                if counter_v < 499 then
-                    trigger_sensor_s <= '0';
-                    counter_v := counter_v + 1;
-                else
-                    trigger_sensor_s <= '1';
-                    trigger_done_s <= '1';
-                    count_time20ms_dl_s <= count_time20ms_s;
-                    count_time20ms_s    <= '1';               
+                trigger_done_s <= '0';
+                if rst_i = '1' then
                     counter_v := (others => '0');
+
+                elsif count_10us_s = '1' then
+                    if counter_v < 499 then
+                        counter_v := counter_v + 1;
+                    else
+                        trigger_done_s <= '1';          
+                        counter_v := (others => '0');
+                    end if;
                 end if;
             end if;
         end process ; -- Trigger_Cnt
@@ -83,37 +82,46 @@ begin
         process( clk_i )
         counter_v   :   unsigned(19 downto 0) := (others => '0');
         begin
-            if rst_i = '1' then
-                counter_v := (others => '0');
-
-            elsif count_time20ms_s = '1' and count_time20ms_dl_s = '0' then
-                if counter_v < 999999 then
-                    counter_v := counter_v + 1;
-                else
-                    counter_v := (others => '0');
-                    next_measure_allowed_s <= '1';
-                end if ;
-            end if;
             
-        end process ;  
+            if rising_edge(clk_i) then
+
+                if rst_i = '1' then
+                    counter_v := (others => '0');
+
+                elsif count_period_20ms_s = '1' then
+                    if counter_v < 999999 then
+                        counter_v := counter_v + 1;
+                    else
+                        next_measure_allowed_s <= '1';  --Im Rechenwerk sobald dieses Signal kommt, muss count_period = 0 sein
+                    end if;
+                elsif count_period_20ms_s = '0' then
+                    counter_v := (others => '0');   
+                    next_measure_allowed_s <= '0';
+                end if;
+            end if;   
+        end process; 
+        
         --The sensor waits 250us and sends the sound wave for 200us. 
         --For that time we should wait. Count until 22499 at clk
         --frequency of 50 MHz
         Sending_Sound_Cnt : process( clk_i )
         counter_v   :   unsigned(14 downto 0) := (others => '0');
         begin
-            if rst_i = '1' then
-                counter_v := (others => '0');
-            
-            elsif wait_sound_sending_s = '1' then
+            if rising_edge(clk_i) then
 
-                if counter_v < 22499 then
-                    counter_v := counter_v + 1;
-                else
+                if rst_i = '1' then
                     counter_v := (others => '0');
-                    sound_sent_s <= '1'
-                end if ; 
-            end if ; 
+                
+                elsif wait_sound_sending_s = '1' then
+
+                    if counter_v < 22499 then
+                        counter_v := counter_v + 1;
+                    else
+                        counter_v := (others => '0');
+                        sound_sent_s <= '1'
+                    end if ; 
+                end if ;
+            end if;
         end process ; -- Sending_Sound_Cnt
 
         --Count time until arrival of an Echo signal from the sensor
@@ -123,26 +131,28 @@ begin
         counter_v   :   unsigned(23 downto 0) := (others => '0');
         begin
 
-            count_failure_s <= '0';
+            if rising_edge(clk_i) then
 
-            if rst_i = '1' then
-                counter_v := (others => '0');
-            
-            elsif count_travel_time_s = '1' then
+                count_failure_s <= '0';
 
-                counter_v := counter_v + 1;
-
-                --because the maximal sensor distance is around 3 meters (6 m both ways)
-                if stop_counting_travel_s = '1' and counter_v < 899999 then
-                    calculate_time_s <= '1';
-                    time_measured_s <= std_logic_vector(counter_v); --vorsicht, die rechte seite hat 23 bits, die linke 19
-                    counter_v := (others => '0'); 
-
-                elsif counter_v > 9999999 then
-                    count_failure_s <= '1';
+                if rst_i = '1' then
                     counter_v := (others => '0');
-                end if;
-            end if ;
+                
+                elsif count_travel_time_s = '1' then
+
+                    counter_v := counter_v + 1;
+
+                    --because the maximal sensor distance is around 3 meters (6 m both ways)
+                    if stop_counting_travel_s = '1' and counter_v < 899999 then
+                        time_measured_s <= std_logic_vector(counter_v); --vorsicht, die rechte seite hat 23 bits, die linke 19
+                        counter_v := (others => '0'); 
+
+                    elsif counter_v > 9999999 then
+                        count_failure_s <= '1';
+                        counter_v := (others => '0');
+                    end if;
+                end if ;
+            end if;
             
         end process ; -- Count_Travel_Time
 
@@ -157,6 +167,9 @@ begin
     end block;
 
     Steuerwerk: block
+    signal trigger_sensor_s         . std_logic := '1';         --  In Rechenwerk an den output zuweisen!!
+
+    begin
 
     end block;
 
