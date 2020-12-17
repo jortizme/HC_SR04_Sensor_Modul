@@ -60,8 +60,7 @@ architecture rtl of HC_SR04 is
     signal start_input_1dl_s        : std_logic := '0';
     signal start_input_2dl_s        : std_logic := '0';
     signal count_period_20ms_s      : std_logic;
-    signal start_division_s         : std_logic;
-
+    
 begin
 
     --To ensure that the signal remains stable, because it comes from outside (synchronize)
@@ -77,7 +76,8 @@ begin
 
     --Intern signals from arithmetic unit
     signal time_measured_s  : std_logic_vector((sound_speed'length + max_dist_ticks'length) - 1 downto 0) = (others => '0');
-    signal result_div_s     : std_logic_vector(time_measured_s'length - 1 downto 0);       
+    signal result_div_s     : std_logic_vector(time_measured_s'length - 1 downto 0);
+    signal start_division_s : std_logic := '0';       
 
     begin 
 
@@ -159,6 +159,7 @@ begin
             if rising_edge(clk_i) then
 
                 count_failure_s <= '0';
+                start_division_s <= '0';
 
                 if rst_i = '1' then
                     counter_v := (others => '0');
@@ -169,7 +170,8 @@ begin
 
                     --because the maximal sensor distance is around 3 meters (6 m both ways)
                     if stop_counting_travel_s = '1' and counter_v < 899999 then
-                        time_measured_s <= std_logic_vector(counter_v * sound_speed); 
+                        time_measured_s <= std_logic_vector(counter_v * sound_speed);
+                        start_division_s <= '1'; 
                         counter_v := (others => '0'); 
 
                     elsif counter_v > 9999999 then
@@ -241,7 +243,6 @@ begin
             count_travel_time_s     <= '0';
             stop_counting_travel_s  <= '0';
             count_period_20ms_s     <= '0';
-            start_division_s        <= '0';
             Next_State              <= S_ERROR;
 
             case( State ) is
@@ -279,7 +280,6 @@ begin
     
                                         elsif echo_in_s = '0' then
                                             stop_counting_travel_s <= '1';
-                                            start_division_s <= '1';
                                             Next_State <= WAIT_PERIOD;
                                         end if;
                                     
