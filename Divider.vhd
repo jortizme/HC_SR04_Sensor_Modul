@@ -14,8 +14,7 @@ entity Divider is
         clock_i     : std_logic;
         divide_i    : std_logic;
         val_i       : std_logic_vector(VAR_VAL_LENTH - 1 downto 0);
-        result_o    : std_logic_vector(VAR_VAL_LENTH - 1 downto 0);
-        div_ready_o : std_logic    
+        result_o    : std_logic_vector(VAR_VAL_LENTH - 1 downto 0)   
     ) ;
 end entity Divider ;
 
@@ -39,20 +38,15 @@ begin
             if divide_i = '1' then
 
                 const_result_s <= unsigned(val_i)  * const_value_c + (2**(CONST_VAL_LENGTH - 1));
-                result_i_s <= const_result_s(const_result_s'length - 1 downto const_value_c'length - 1)
-
-                if result_i_s /= '0' then
-                    div_ready_s <= '1';
-                end if; 
+                result_i_s <= const_result_s(const_result_s'length - 1 downto const_value_c'length - 1) 
             end if ;
         end if;
     end process ; 
 
     --Output signals
-    process(result_i_s, div_ready_s)
+    process(result_i_s)
     begin
         result_o <= std_logic_vector(result_i_s);
-        div_ready_o <= div_ready_s;
     end process ; -- 
 
 end architecture rtl; -- arch

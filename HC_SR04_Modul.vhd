@@ -61,7 +61,6 @@ architecture rtl of HC_SR04 is
     signal start_input_2dl_s        : std_logic := '0';
     signal count_period_20ms_s      : std_logic;
     signal start_division_s         : std_logic;
-    signal divison_finished_s       : std_logic := '0';
 
 begin
 
@@ -191,8 +190,7 @@ begin
             clock_i     => clk_i,
             divide_i    => start_division_s,
             val_i       => time_measured_s,
-            result_o    => result_div_s,
-            div_ready_o =>  divison_finished_s
+            result_o    => result_div_s
         );
         
         --Signal assignment to output
@@ -205,7 +203,7 @@ begin
         signal trigger_sensor_s         . std_logic := '1';         --  In Rechenwerk an den output zuweisen!!
 
         --Typ for state values
-        type state_type is (IDLE, TRIGGER, SOUND_SEND, COUNT_TRAVEL, CALCULATE, WAIT_PERIOD, S_ERROR);
+        type state_type is (IDLE, TRIGGER, SOUND_SEND, COUNT_TRAVEL, WAIT_PERIOD, S_ERROR);
 
         --Intern signals from the control unit
         signal State        : state_type := IDLE;
@@ -234,7 +232,7 @@ begin
         --Process to calculate the next state and the mealy outputs
         Transition : process( State, trigger_done_s, next_measure_allowed_s, 
                             sound_sent_s, count_failure_s, start_input_2dl_s, 
-                            divison_finished_s, echo_in_s )
+                            echo_in_s )
         begin
 
             --Default-Values for the next state and mealy-output
@@ -254,7 +252,6 @@ begin
                                     elsif start_input_2dl_s = '1' then
                                         Next_State <= TRIGGER;
                                     end if ;
-
                 when TRIGGER =>
                                     if trigger_done_s = '0' then
                                         count_10us_s <= '1';
@@ -262,7 +259,6 @@ begin
                                     elsif trigger_done_s = '1' then
                                         Next_State <= SOUND_SEND;    
                                     end if ;
-
                 when SOUND_SEND =>
                                     count_period_20ms_s <= '1';
 
@@ -272,7 +268,6 @@ begin
                                     elsif sound_sent_s = '1' then
                                         Next_State <= COUNT_TRAVEL;                                     
                                     end if ;
-
                 when COUNT_TRAVEL =>
                                     if count_failure_s = '0' then
 
@@ -284,7 +279,8 @@ begin
     
                                         elsif echo_in_s = '0' then
                                             stop_counting_travel_s <= '1';
-                                            Next_State <= CALCULATE;
+                                            start_division_s <= '1';
+                                            Next_State <= WAIT_PERIOD;
                                         end if;
                                     
                                     elsif count_failure_s = '1' then
@@ -294,20 +290,7 @@ begin
                                         elsif start_input_2dl_s = '0' then
                                             Next_State <= IDLE;
                                         end if ;
-                                    end if ;
-
-                when CALCULATE =>
-                                    count_period_20ms_s <= '1';
-
-                                    --Possibly hier are some signals missing for the UART interface
-
-                                    if divison_finished_s = '0' then
-                                        start_division_s <= '1';
-                                        Next_State <= CALCULATE;
-                                    elsif divison_finished_s = '1' then
-                                        Next_State <= WAIT_PERIOD;
-                                    end if ;
-
+                                    end if;
                 when WAIT_PERIOD =>
                                     if  next_measure_allowed_s = '0' then
                                         count_period_20ms_s <= '1';
@@ -319,7 +302,6 @@ begin
                                             Next_State <= IDLE;
                                         end if ;
                                     end if ;    
-            
                 when S_ERROR =>     null;
             
             end case ;
@@ -344,7 +326,6 @@ begin
                         when TRIGGER        => trigger_out_s <= '0';
                         when SOUND_SEND     => trigger_out_s <= '1';
                         when COUNT_TRAVEL   => trigger_out_s <= '1';
-                        when CALCULATE      => trigger_out_s <= '1';
                         when WAIT_PERIOD    => trigger_out_s <= '1';
                         when S_ERROR        => null;        
                     end case ;
