@@ -16,7 +16,7 @@ entity Divider is
         val_i       : std_logic_vector(VAR_VAL_LENTH - 1 downto 0);
         result_o    : std_logic_vector(VAR_VAL_LENTH - 1 downto 0);
         div_ready_o : std_logic    
-      ) ;
+    ) ;
 end entity Divider ;
 
 architecture rtl of Divider is
