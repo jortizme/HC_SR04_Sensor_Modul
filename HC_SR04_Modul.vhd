@@ -12,19 +12,19 @@ use ieee.numeric_std.all;
 entity HC_SR04 is
     generic(
         CONST_VAL           : positive;  --First try would be (2^35 / clk) = 21990 
-        CONST_VAL_LENGTH    : positive   -- 35
+        CONST_VAL_LENGTH    : positive;   -- 35
+        DATA_WIDTH          : positive    --Lets start with 16
     );
     port (
         clk_i               : in std_logic;
         rst_i               : in std_logic;
         start_sensor_i      : in std_logic;
         echo_sensor_i       : in std_logic;
-        trigger_sensor_o    : out std_logic;            --INVERSE LOGIC
-        value_measured_o    : out std_logic_vector(31 downto 0);        
-        ----
-        --Signals to uart are still missing
-        ---
-  ) ;
+        sender_ready_i      : in std_logic;
+        trigger_sensor_o    : out std_logic;            
+        value_measured_o    : out std_logic_vector(DATA_WIDTH - 1 downto 0)
+        value_there_o       : out std_logic
+    );
 end entity HC_SR04;
 
 architecture rtl of HC_SR04 is
@@ -44,8 +44,8 @@ architecture rtl of HC_SR04 is
         return res_v;
     end function;
 
-    constant sound_speed    : unsigned(bits_amount(34300) - 1 downto 0)  := 34300; --in cm/s
-    --Maximal ticks possible if the max measurable distance is 3 m
+    constant sound_speed    : unsigned(bits_amount(34300) - 1 downto 0)  := 34300; --in cm/s (34300 cm/s)
+    --Maximal ticks possible if the max measurable distance is 3 m (the correct distance in 6 m)
     constant max_dist_ticks : unsigned(bits_amount(899999) - 1 downto 0) := 899999;      
     
     --Signals between the Control and Arithmetic Unit
@@ -57,20 +57,9 @@ architecture rtl of HC_SR04 is
     signal count_travel_time_s      : std_logic;
     signal count_failure_s          : std_logic := '0';
     signal stop_counting_travel_s   : std_logic;
-    signal start_input_1dl_s        : std_logic := '0';
-    signal start_input_2dl_s        : std_logic := '0';
     signal count_period_20ms_s      : std_logic;
     
 begin
-
-    --To ensure that the signal remains stable, because it comes from outside (synchronize)
-    process( clk_i )
-    begin
-        if rising_edge(clk_i) then
-            start_input_1dl_s <= start_sensor_i;                                        
-            start_input_2dl_s <= start_input_1dl_s; --Vieleicht ein debouncer implementieren???!!!!!
-        end if;  
-    end process ;  
 
     Arithmetic_Unit: block
 
@@ -83,7 +72,7 @@ begin
 
         --Counting until 499 with a clock frequency of 50 MHz ensures a 10us waiting time
         Trigger_Cnt : process( clk_i )
-        counter_v   :   unsigned(8 downto 0) := (others => '0');
+        counter_v   :   unsigned(bits_amount(499) - 1 downto 0) := (others => '0');
         begin
             if rising_edge(clk_i) then 
 
@@ -102,9 +91,9 @@ begin
             end if;
         end process ; -- Trigger_Cnt
 
-        --This process counts for 20ms to ensure the measurement frequency 50Hz
+        --This process censures period of 20ms (50Hz frequeny), before the next measurement
         process( clk_i )
-        counter_v   :   unsigned(19 downto 0) := (others => '0');
+        counter_v   :   unsigned( bits_amount(999999) - 1 downto 0) := (others => '0');
         begin
             
             if rising_edge(clk_i) then
@@ -116,7 +105,7 @@ begin
                     if counter_v < 999999 then
                         counter_v := counter_v + 1;
                     else
-                        next_measure_allowed_s <= '1';  --Im Rechenwerk sobald dieses Signal kommt, muss count_period = 0 sein
+                        next_measure_allowed_s <= '1';
                     end if;
                 elsif count_period_20ms_s = '0' then
                     counter_v := (others => '0');   
@@ -129,7 +118,7 @@ begin
         --For that time we should wait. Count until 22499 at clk
         --frequency of 50 MHz
         Sending_Sound_Cnt : process( clk_i )
-        counter_v   :   unsigned(14 downto 0) := (others => '0');
+        counter_v   :   unsigned(bits_amount(22499) - 1  downto 0) := (others => '0');
         begin
             if rising_edge(clk_i) then
 
@@ -150,10 +139,10 @@ begin
         end process ; -- Sending_Sound_Cnt
 
         --Count time until arrival of an Echo signal from the sensor
-        --According to the data sheet, the sensor output Echo will
+        --According to the data sheet, the sensor output Echo can
         --remain for maximal 200ms High, in case of no signal detected
         Count_Travel_Time : process( clk_i )
-        counter_v   :   unsigned(23 downto 0) := (others => '0');
+        counter_v   :   unsigned( bits_amount(9999999) - 1 downto 0) := (others => '0');
         begin
 
             if rising_edge(clk_i) then
@@ -169,7 +158,7 @@ begin
                     counter_v := counter_v + 1;
 
                     --because the maximal sensor distance is around 3 meters (6 m both ways)
-                    if stop_counting_travel_s = '1' and counter_v < 899999 then
+                    if stop_counting_travel_s = '1' and counter_v < max_dist_ticks then
                         time_measured_s <= std_logic_vector(counter_v * sound_speed);
                         start_division_s <= '1'; 
                         counter_v := (others => '0'); 
@@ -178,6 +167,9 @@ begin
                         count_failure_s <= '1';
                         counter_v := (others => '0');
                     end if;
+
+                else
+                    counter_v := (others => '0');
                 end if ;
             end if;
             
@@ -196,45 +188,36 @@ begin
         );
         
         --Signal assignment to output
-        value_measured_o <= result_div_s(31 downto 0);
+        value_measured_o <= result_div_s(DATA_WIDTH - 1 downto 0);
 
     end block;
 
     Steuerwerk: block
 
-        signal trigger_sensor_s         . std_logic := '1';         --  In Rechenwerk an den output zuweisen!!
-
         --Typ for state values
-        type state_type is (IDLE, TRIGGER, SOUND_SEND, COUNT_TRAVEL, WAIT_PERIOD, S_ERROR);
+        type state_type is (IDLE, TRIGGER, SOUND_SEND, COUNT_TRAVEL, SEND_VALUE, WAIT_PERIOD, S_ERROR);
 
         --Intern signals from the control unit
         signal State        : state_type := IDLE;
         signal Next_State   : state_type;
 
         --Initialize intern signals
-        signal trigger_out_s    : std_logic := '1';
-        signal echo_in_s        : std_logic;      
+        signal trigger_out_s    : std_logic := '1'; --Moore Output
+        signal value_there_s    : std_logic := '0'; --Moore Output   
 
     begin
-
-        --To synchronise the input signal
-        Echo_in_FF: process( clk_i )
-        begin
-            if rising_edge(clk_i) then
-                echo_in_s <= echo_sensor_i;
-            end if ;
-        end process;
-
+        
         --assign the value of the intern signals to the output port
-        process( trigger_out_s )
+        process( trigger_out_s ,value_there_s)
         begin
             trigger_sensor_o <= trigger_out_s;
+            value_there_o <= value_there_s;
         end process;
 
         --Process to calculate the next state and the mealy outputs
         Transition : process( State, trigger_done_s, next_measure_allowed_s, 
-                            sound_sent_s, count_failure_s, start_input_2dl_s, 
-                            echo_in_s )
+                            sound_sent_s, count_failure_s, start_sensor_i, 
+                            echo_sensor_i, sender_ready_i)
         begin
 
             --Default-Values for the next state and mealy-output
@@ -248,9 +231,9 @@ begin
             case( State ) is
             
                 when IDLE =>
-                                    if  start_input_2dl_s = '0' then
+                                    if  start_sensor_i = '0' then
                                         Next_State <= IDLE;
-                                    elsif start_input_2dl_s = '1' then
+                                    elsif start_sensor_i = '1' then
                                         Next_State <= TRIGGER;
                                     end if ;
                 when TRIGGER =>
@@ -274,31 +257,37 @@ begin
 
                                         count_period_20ms_s <= '1';
 
-                                        if echo_in_s = '1' then
+                                        if echo_sensor_i = '1' then
                                             count_travel_time_s <= '1';
                                             Next_State <= COUNT_TRAVEL;
     
-                                        elsif echo_in_s = '0' then
+                                        elsif echo_sensor_i = '0' then
                                             stop_counting_travel_s <= '1';
-                                            Next_State <= WAIT_PERIOD;
+                                            Next_State <= SEND_VALUE;
                                         end if;
                                     
                                     elsif count_failure_s = '1' then
 
-                                        if start_input_2dl_s = '1' then
+                                        if start_sensor_i = '1' then
                                             Next_State <= TRIGGER;
-                                        elsif start_input_2dl_s = '0' then
+                                        elsif start_sensor_i = '0' then
                                             Next_State <= IDLE;
                                         end if ;
                                     end if;
+                when SEND_VALUE  =>
+                                    if sender_ready_i = '1'  then
+                                        Next_State <= WAIT_PERIOD;
+                                    else
+                                        Next_State <= SEND_VALUE;
+                                    end if ;
                 when WAIT_PERIOD =>
                                     if  next_measure_allowed_s = '0' then
                                         count_period_20ms_s <= '1';
                                         Next_State <= WAIT_PERIOD;
                                     elsif next_measure_allowed_s = '1' then
-                                        if start_input_2dl_s = '1' then
+                                        if start_sensor_i = '1' then
                                             Next_State <= TRIGGER;
-                                        elsif start_input_2dl_s = '0' then
+                                        elsif start_sensor_i = '0' then
                                             Next_State <= IDLE;
                                         end if ;
                                     end if ;    
@@ -319,14 +308,16 @@ begin
 
                 if rst_i = '1' then
                     trigger_out_s <= '1';
+                    value_there_s <= '0';
                 else
                     case( Next_State ) is
                     
-                        when IDLE           => trigger_out_s <= '1';
-                        when TRIGGER        => trigger_out_s <= '0';
-                        when SOUND_SEND     => trigger_out_s <= '1';
-                        when COUNT_TRAVEL   => trigger_out_s <= '1';
-                        when WAIT_PERIOD    => trigger_out_s <= '1';
+                        when IDLE           => trigger_out_s <= '1'; value_there_s <= '0';
+                        when TRIGGER        => trigger_out_s <= '0'; value_there_s <= '0';
+                        when SOUND_SEND     => trigger_out_s <= '1'; value_there_s <= '0';
+                        when COUNT_TRAVEL   => trigger_out_s <= '1'; value_there_s <= '0';
+                        when SEND_VALUE     => trigger_out_s <= '1'; value_there_s <= '1';
+                        when WAIT_PERIOD    => trigger_out_s <= '1'; value_there_s <= '0';
                         when S_ERROR        => null;        
                     end case ;
                 end if ;
