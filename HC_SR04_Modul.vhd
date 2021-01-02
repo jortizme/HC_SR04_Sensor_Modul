@@ -20,7 +20,6 @@ entity HC_SR04 is
         rst_i               : in std_logic;
         start_sensor_i      : in std_logic;
         echo_sensor_i       : in std_logic;
-        sender_ready_i      : in std_logic;
         trigger_sensor_o    : out std_logic;            
         value_measured_o    : out std_logic_vector(DATA_WIDTH - 1 downto 0)
         value_there_o       : out std_logic
@@ -217,7 +216,7 @@ begin
         --Process to calculate the next state and the mealy outputs
         Transition : process( State, trigger_done_s, next_measure_allowed_s, 
                             sound_sent_s, count_failure_s, start_sensor_i, 
-                            echo_sensor_i, sender_ready_i)
+                            echo_sensor_i)
         begin
 
             --Default-Values for the next state and mealy-output
@@ -275,11 +274,7 @@ begin
                                         end if ;
                                     end if;
                 when SEND_VALUE  =>
-                                    if sender_ready_i = '1'  then
-                                        Next_State <= WAIT_PERIOD;
-                                    else
-                                        Next_State <= SEND_VALUE;
-                                    end if ;
+                                    Next_State <= WAIT_PERIOD;
                 when WAIT_PERIOD =>
                                     if  next_measure_allowed_s = '0' then
                                         count_period_20ms_s <= '1';

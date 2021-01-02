@@ -97,7 +97,7 @@ begin
                             DCfg_i_s(20) <= '1' when Parity_on_c = 1 else '0';
                             DCfg_i_s(21) <= '1' when Parity_odd_c = 1 else '0';
                             DCfg_i_s(23 downto 22) <= std_logic_vector(to_unsigned(StopBits_c, 2));
-                            DCfg_i_s(24 downto 25) <= "11";
+                            DCfg_i_s(24 downto 25) <= "11"; --enable both interrupts
 
                             --Set the control bus signals
                             WE_s <= '1';        --Write
