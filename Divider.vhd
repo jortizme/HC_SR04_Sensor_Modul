@@ -4,7 +4,7 @@ use ieee.numeric_std.all;
 
 entity Divider is
     generic(
-        --Equals the 2^DIVISOR_LENGTH number divided by the number in the denominator
+        --Equals the 2^CONST_VAL_LENGTH number divided by the number in the denominator
         CONST_VAL           : positive;  
         CONST_VAL_LENGTH    : positive;
         --Variable value length
@@ -19,34 +19,20 @@ entity Divider is
 end entity Divider ;
 
 architecture rtl of Divider is
-
     constant const_value_c  : unsigned(CONST_VAL_LENGTH - 1 downto 0) := to_unsigned(CONST_VAL,CONST_VAL_LENGTH);
-
-    signal const_result_s   : unsigned((CONST_VAL_LENGTH + VAR_VAL_LENTH)-1 downto 0) := (others => '0');
-    signal result_i_s       : unsigned(VAR_VAL_LENTH - 1 downto 0) := (others => '0');
-    signal div_ready_s      : std_logic;
-
 begin
 
     Dividor: process( clock_i )
+    variable const_result_s   : unsigned((CONST_VAL_LENGTH + VAR_VAL_LENTH)-1 downto 0) := (others => '0');
     begin
         
         if rising_edge(clock_i) then
 
-            div_ready_s <= '0';
-
             if divide_i = '1' then
-
-                const_result_s <= unsigned(val_i)  * const_value_c + (2**(CONST_VAL_LENGTH - 1));
-                result_i_s <= const_result_s(const_result_s'length - 1 downto const_value_c'length - 1) 
+                const_result_s := unsigned(val_i)  * const_value_c + (2**(CONST_VAL_LENGTH - 1));
+                result_o <= const_result_s(const_result_s'length - 1 downto const_value_c'length - 1) 
             end if ;
         end if;
     end process ; 
-
-    --Output signals
-    process(result_i_s)
-    begin
-        result_o <= std_logic_vector(result_i_s);
-    end process ; -- 
 
 end architecture rtl; -- arch

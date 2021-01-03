@@ -93,8 +93,8 @@ begin
 
     HC_SR04_Modul: entity work.HC_SR04_Modul
     generic map(
-        CONST_VAL           => 21990, --First try would be (2^40 / clk) = 21990 
-        CONST_VAL_LENGTH    => 40,
+        CONST_VAL           => 86, --First try would be (2^32 / clk) = 86
+        CONST_VAL_LENGTH    => 32,
         DATA_WIDTH          => DATA_WIDTH
     )
     port map(
