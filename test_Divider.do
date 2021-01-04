@@ -3,6 +3,7 @@ if {![file exists work]} {
 }
 
 vcom  Divider.vhd
+vcom txt_util_pack.vhd
 vcom  Divider_TB.vhd
 
 vsim -t ns -voptargs=+acc work.Divider_tb
