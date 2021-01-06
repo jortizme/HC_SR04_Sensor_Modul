@@ -11,8 +11,8 @@ use ieee.numeric_std.all;
 
 entity HC_SR04 is
     generic(
-        CONST_VAL           : positive;  --First try would be (2^35 / clk) = 21990 
-        CONST_VAL_LENGTH    : positive;   -- 35
+        CONST_VAL           : positive;  -- (2^32*34300)/clock frequency rounded -> 34300 cm/s = 2946347
+        CONST_VAL_LENGTH    : positive;   -- 32
         DATA_WIDTH          : positive    --Lets start with 16
     );
     port (
@@ -21,7 +21,7 @@ entity HC_SR04 is
         start_sensor_i      : in std_logic;
         echo_sensor_i       : in std_logic;
         trigger_sensor_o    : out std_logic;            
-        value_measured_o    : out std_logic_vector(DATA_WIDTH - 1 downto 0)
+        value_measured_o    : out std_logic_vector(DATA_WIDTH - 1 downto 0);
         value_there_o       : out std_logic
     );
 end entity HC_SR04;
@@ -43,24 +43,24 @@ architecture rtl of HC_SR04 is
         return res_v;
     end function;
 
-    constant sound_speed    : unsigned(bits_amount(34300) - 1 downto 0)  := 34300; --in cm/s (34300 cm/s)
     --Maximal ticks possible if the max measurable distance is around 300 cm (the correct distance in 600 cm)
-    constant max_dist_ticks : unsigned(bits_amount(899999) - 1 downto 0) := 899999;      
+    constant max_dist_ticks : unsigned(bits_amount(1099999) - 1 downto 0) := to_unsigned(1099999,bits_amount(1099999));      
     
     --Signals between the Control and Arithmetic Unit
     signal count_travel_time_s      : std_logic;
     signal stop_count_travel_time_s : std_logic;
     signal echo_high_s              : std_logic;
     signal echo_low_s               : std_logic;
+    signal time_out_s               : std_logic;
     signal start_division_s : std_logic := '0';
     
-begins
+begin
 
     Arithmetic_Unit: block
 
     --Intern signals from arithmetic unit
-    signal time_measured_s  : std_logic_vector((sound_speed'length + max_dist_ticks'length) - 1 downto 0) = (others => '0');
-    signal result_div_s     : std_logic_vector(time_measured_s'length - 1 downto 0);
+    signal time_measured_s  : std_logic_vector(max_dist_ticks'length - 1 downto 0) := (others => '0');
+    signal result_div_s     : std_logic_vector(max_dist_ticks'length - 1 downto 0);
     signal trigger_s        : std_logic := '1'; --Idle high
     signal echo_dly_s       : std_logic := '0';
 
@@ -71,20 +71,20 @@ begins
         -- the sensor to achieve a complete measuremet is 20 ms. This signal is only
         --activated, whenever the start_sensor_i input reaches the high level
         Trigger_Signal : process( clk_i )
-        counter_v : unsigned( bits_amount(1000000) - 1 downto 0) := 1000000; --Countdown beginning at 999999 (SYS_FREQ/50Hz)
+        variable counter_v : unsigned( bits_amount(999999) - 1 downto 0) := to_unsigned(1000000,bits_amount(999999)); --Countdown beginning at 999999 (SYS_FREQ/50Hz)
         begin
 
             if rising_edge(clk_i) then
 
                 if rst_i = '1' then
-                    counter_v := 1000000;
+                    counter_v := to_unsigned(999999,bits_amount(999999));
 
                 else
                     counter_v := counter_v - 1;
 
                     if counter_v = 0 then
                         trigger_s <= not trigger_s;
-                        counter_v := 1000000;
+                        counter_v := to_unsigned(999999,bits_amount(999999));
                     end if ;
                 end if;
             end if ;
@@ -92,7 +92,7 @@ begins
         end process ; -- Trigger_Signal
 
         --Trigger signal assignment at the output
-        trigger_sensor_o <= trigger_s if start_sensor_i = '1' else '1';
+        trigger_sensor_o <= trigger_s when start_sensor_i = '1' else '1';
 
         --This process detects any edge transiton on the echo_sensor_i input
         Detect_Echo_Changes: process(clk_i)
@@ -120,10 +120,12 @@ begins
         end process; 
 
         Count_Travel_Time : process( clk_i )
-        counter_v   :   unsigned( max_dist_ticks'length - 1 downto 0) := (others => '0');
+        variable counter_v   :   unsigned( max_dist_ticks'length - 1 downto 0) := (others => '0');
         begin
 
             if rising_edge(clk_i) then
+
+                time_out_s <= '0';
 
                 if rst_i = '1' then
                     counter_v := (others => '0');
@@ -132,8 +134,13 @@ begins
 
                     counter_v := counter_v + 1;
 
+                    if counter_v = max_dist_ticks then
+                        counter_v := (others => '0');
+                        time_out_s <= '1';
+                    end if;
+
                 elsif stop_count_travel_time_s = '1' then
-                    time_measured_s <= std_logic_vector(counter_v * sound_speed);
+                    time_measured_s <= std_logic_vector(counter_v);
                     counter_v := (others => '0'); 
 
                 end if;
@@ -181,7 +188,7 @@ begins
         end process;
 
         --Process to calculate the next state and the mealy outputs
-        Transition : process( State, echo_high_s, echo_low_s)
+        Transition : process( State, echo_high_s, echo_low_s, time_out_s)
         begin
 
             --Default-Values for the next state and mealy-output
@@ -192,11 +199,12 @@ begins
             case( State ) is
             
                 when IDLE =>
-                            if  echo_high_s = '0' then
-                                Next_State <= IDLE;
-                            elsif echo_high_s = '1' then
+
+                            if echo_high_s = '1' then
                                 count_travel_time_s <= '1';
                                 Next_State <= COUNTING_TIME;
+                            else  
+                                Next_State <= IDLE;
                             end if ;
 
                 when COUNTING_TIME  =>
@@ -207,6 +215,10 @@ begins
                             elsif echo_low_s = '1' then
                                 stop_count_travel_time_s <= '1';
                                 Next_State <= DIVIDE;
+
+                            elsif time_out_s = '1' then
+                                Next_State <= IDLE;
+
                             end if ;
                             
                 when DIVIDE  => Next_State <= DONE;

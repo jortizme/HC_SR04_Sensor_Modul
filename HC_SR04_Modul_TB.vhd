@@ -5,10 +5,12 @@ use ieee.numeric_std.all;
 entity HC_SR04_tb is
 end entity;
 
+use work.txt_util_pack.all;
+
 architecture behavior of HC_SR04_tb is
 
     constant CLOCK_PERIOD       : time      := 20 ns;  -- 50 MHz clock frequency
-    constant CONST_VAL          : positive  := 86;     -- 2^32/clock frequency rounded
+    constant CONST_VAL          : positive  := 2946347; -- (2^32*34300)/clock frequency rounded -> 34300 cm/s 
     constant CONST_VAL_LENGTH   : positive  := 32;
     constant DATA_WIDTH         : positive  := 16;
         
@@ -21,13 +23,13 @@ architecture behavior of HC_SR04_tb is
     signal echo_sensor_i    : std_logic;
     
     -----------------Outputs--------------------
-    signal trigger_sensor_o     : std_logic;
-    signal value_measured_o     : std_logic_vector(DATA_WIDTH - 1 downto 0);
-    signal value_there_o     : std_logic;
+    signal trigger_sensor_o : std_logic;
+    signal value_measured_o : std_logic_vector(DATA_WIDTH - 1 downto 0);
+    signal value_there_o    : std_logic;
 
     type textcase_record is record
     travel_time     : time;
-    dist_ref        : unsigned(DATA_WIDTH - 1 downto 0);
+    dist_ref        : integer;
     end record;
 
     type testcase_vector is array(natural range <>) of textcase_record;
@@ -38,7 +40,7 @@ architecture behavior of HC_SR04_tb is
     2=>(5 ms, 85),
     3=>(4 ms, 68),
     4=>(17 ms, 291),
-    5=>(12 ms, 205),
+    5=>(12 ms, 206),
     6=>(7 ms, 120),
     7=>(2 ms, 34),
     8=>(1 ms, 17),
@@ -52,47 +54,37 @@ begin
 
     Stimulate: process
 
-        function value_in_range(value_ref : unsigned(DATA_WIDTH - 1 downto 0);
-                                value_measured :  : unsigned(DATA_WIDTH - 1 downto 0)
-                                ) return integer is
-        variable low_threshold  : unsigned(DATA_WIDTH - 1 downto 0) := value_ref - 5;
-        variable high_threshold : unsigned(DATA_WIDTH - 1 downto 0) := value_ref + 5;
-        begin
-            if value_measured > low_threshold and value_measured < high_threshold then
-                return 1;
-            else
-                return 0;
-            end if;
-        end function;
-
         --Simulate the a measure cycle's behavior 
-        procedure execute_test(i: integer) is
+        procedure execute_test(i: integer; con_measu : std_logic) is
+            
+        variable value_measured_v   : unsigned(DATA_WIDTH - 1 downto 0);   
 
         begin
 
-            start_sensor_i <= '0';
-            echo_sensor_i <= '0';
+            if con_measu = '0' then
 
-            --To make sure that the sensor doens't trigger
-            --unless the signal start_sensor_i tells it to
-            wait for tests(i) * 2;
-            wait until falling_edge(clk_i);
+                start_sensor_i <= '0';
 
-            --Verify
-            assert trigger_sensor_o = '1' and value_there_o  = '0' report "The sensor triggers without autorisation" severity failure
+                --To make sure that the sensor doens't trigger
+                --unless the signal start_sensor_i tells it to
+                wait for CLOCK_PERIOD * (i+1);
+    
+                --Verify
+                assert trigger_sensor_o = '1' and value_there_o  = '0' report "The sensor triggers without autorisation" severity failure;
+    
+    
+                --start the sensor and wait until the trigger comes
+                start_sensor_i <= '1';
 
+            end if;
 
-            --start the sensor and wait until the trigger comes
-            start_sensor_i <= '1';
-            wait until trigger_sensor_o = '0'
+            --wait until the trigger comes
+            wait until trigger_sensor_o = '0';
 
             --in this time the sensor should send the sound wave
             --to vary it, it is being multiplied by the i value
             --WARINING-> is should not wait longer than 450 us
             wait for 40 us * i;
-
-            --Verify
-            assert trigger_sensor_o = '0' and value_there_o  = '0' report "The trigger should stay low during the measurement period (20ms)" severity failure;
 
             --Start the simulation of the wait time for the reflected wave
             echo_sensor_i <= '1';
@@ -100,41 +92,68 @@ begin
             --wait for the specified travel time 
             wait for tests(i).travel_time;
 
-            --Verify
-            assert trigger_sensor_o = '0' and value_there_o  = '0' report "The trigger should stay low during the measurement period (20ms)" severity failure;
-
             --Stop the simulation of the wait time for the reflected wave
             echo_sensor_i <= '0';
 
             --wait until the measured distance is available
-            wait until value_there_o = '1'
+            wait until value_there_o = '1';
 
-            assert value_in_range(tests(i).dist_ref, unsigned(value_measured_o)) = 1 "The sensor module measured a distance out of the boundaries" severity failure;
+            value_measured_v    := unsigned(value_measured_o);
 
-            --wait until the trigger goes high
-            wait until trigger_sensor_o = '1';
+            assert value_measured_v = to_unsigned(tests(i).dist_ref,DATA_WIDTH)report "The sensor module measured false distance" severity failure;
+
+            if con_measu = '0' then
+
+                wait until falling_edge(clk_i);
+
+                start_sensor_i <= '0';
+    
+                --wait until the trigger goes high
+                wait until falling_edge(clk_i);
+                
+                assert trigger_sensor_o = '1' report "The module is not active anymore, the trigger should be deactivated" severity failure;
+
+            end if;
 
         end procedure;
         
-        --NOCH EINE PROZEDUR ZUM PRÜFEN VON KONTINUERLICHE MESSUNGEN
-
     begin
+
+        --Reset the sensor module
+        wait until falling_edge(clk_i);
+        rst_i <= '1';
+        wait until falling_edge(clk_i);
+        rst_i <= '0';
+
+        echo_sensor_i <= '0';
 
         for i in tests'range loop
 
-            --Reset the sensor module
-            wait until falling_edge(clk_i);
-            rst_i <= '1';
-            wait until falling_edge(clk_i);
-            rst_i <= '0';
+            execute_test(i, '0');
+            report "Normal Test " & str(i) & " completed";
+        end loop;
 
-            execute_test(i);
-            report "Test " & str(i) & " completed";
+
+        --Reset the sensor module again
+        wait until falling_edge(clk_i);
+        rst_i <= '1';
+        wait until falling_edge(clk_i);
+        rst_i <= '0';
+
+        echo_sensor_i <= '0';
+
+        --the start signal remains high during this second test
+        start_sensor_i <= '1';
+
+        for i in tests'range loop
+
+            execute_test(i, '1');
+            report "Continuous Test " & str(i) & " completed";
         end loop;
 
         wait;
 
-    end process
+    end process;
 
     clocking: process
     begin

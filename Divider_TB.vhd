@@ -5,6 +5,8 @@ use ieee.numeric_std.all;
 entity Divider_tb is
 end entity;
 
+use work.txt_util_pack.all;
+
 architecture behavior of Divider_tb is
 
     constant CLOCK_PERIOD       : time      := 20 ns;  -- 50 MHz clock frequency
@@ -18,8 +20,8 @@ architecture behavior of Divider_tb is
     signal result_o : std_logic_vector(VAR_VAL_LENTH - 1 downto 0);
 
     type textcase_record is record
-    variable_val     : unsigned(VAR_VAL_LENTH - 1 downto 0;
-    expected_result  : unsigned(VAR_VAL_LENTH - 1 downto 0;    
+    variable_val     : positive;
+    expected_result  : positive;    
     end record;
 
     type testcase_vector is array(natural range <>) of textcase_record;
@@ -41,10 +43,10 @@ begin
 
             wait until falling_edge(clk_i);
             divide_i <= '1';
-            val_i <= std_logic_vector(tests(i).variable_val);
+            val_i <= std_logic_vector(to_unsigned(tests(i).variable_val,VAR_VAL_LENTH));
 
             wait until falling_edge(clk_i);
-            assert unsigned(result_o) == tests(i).expected_result report "False result" severity error
+            assert unsigned(result_o) = to_unsigned(tests(i).expected_result,VAR_VAL_LENTH) report "False result" severity error;
             report "Test " & str(i) & " completed";
 
             wait until falling_edge(clk_i);
@@ -68,8 +70,8 @@ begin
     DUT: entity work.Divider
     generic map(
         --Equals the 2^CONST_VAL_LENGTH number divided by the number in the denominator
-        CONST_VAL           => CONST_VAL
-        CONST_VAL_LENGTH    => CONST_VAL_LENGTH
+        CONST_VAL           => CONST_VAL,
+        CONST_VAL_LENGTH    => CONST_VAL_LENGTH,
         --Variable value length
         VAR_VAL_LENTH       => VAR_VAL_LENTH
     )
@@ -78,6 +80,6 @@ begin
         divide_i    => divide_i,
         val_i       => val_i,
         result_o    => result_o
-    )
+    );
 
 end architecture behavior ; 

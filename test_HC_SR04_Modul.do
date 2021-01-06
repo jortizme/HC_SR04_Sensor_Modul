@@ -47,5 +47,5 @@ add wave -unsigned /HC_SR04_tb/DUT/Arithmetic_Unit/time_measured_s
 add wave -unsigned /HC_SR04_tb/DUT/Arithmetic_Unit/result_div_s
 
 
-run 180 ms
+run 700 ms
 wave zoom full
