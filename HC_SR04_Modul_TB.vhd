@@ -34,7 +34,7 @@ architecture behavior of HC_SR04_tb is
 
     type testcase_vector is array(natural range <>) of textcase_record;
 
-    constant tests : testcase_vector(0 to 11) := (
+    constant tests : testcase_vector(0 to 13) := (
     0=>(20 ms, 343),
     1=>(10 ms, 171),
     2=>(5 ms, 85),
@@ -46,11 +46,12 @@ architecture behavior of HC_SR04_tb is
     8=>(1 ms, 17),
     9=>(500 us,8),
     10=>(150 us, 2),
-    11=>(3 ms, 51)
+    11=>(3 ms, 51),
+    12=>(24 ms, 0),
+    13=>(100 ms, 0)
     );
 
 begin
-
 
     Stimulate: process
 
@@ -70,11 +71,16 @@ begin
                 wait for CLOCK_PERIOD * (i+1);
     
                 --Verify
-                assert trigger_sensor_o = '1' and value_there_o  = '0' report "The sensor triggers without autorisation" severity failure;
-    
+                assert trigger_sensor_o = '0' and value_there_o  = '0' report "The sensor triggers without autorisation" severity failure;
     
                 --start the sensor and wait until the trigger comes
                 start_sensor_i <= '1';
+
+                wait on trigger_sensor_o;
+
+                assert trigger_sensor_o = '1' and value_there_o  = '0' report "The sensor triggers without autorisation" severity failure;
+
+                start_sensor_i <= '0';
 
             end if;
 
@@ -102,17 +108,9 @@ begin
 
             assert value_measured_v = to_unsigned(tests(i).dist_ref,DATA_WIDTH)report "The sensor module measured false distance" severity failure;
 
-            if con_measu = '0' then
 
-                wait until falling_edge(clk_i);
-
-                start_sensor_i <= '0';
-    
-                --wait until the trigger goes high
-                wait until falling_edge(clk_i);
-                
-                assert trigger_sensor_o = '1' report "The module is not active anymore, the trigger should be deactivated" severity failure;
-
+            if con_measu = '1' then
+                wait until trigger_sensor_o = '1';
             end if;
 
         end procedure;
@@ -146,7 +144,6 @@ begin
         start_sensor_i <= '1';
 
         for i in tests'range loop
-
             execute_test(i, '1');
             report "Continuous Test " & str(i) & " completed";
         end loop;
@@ -172,7 +169,7 @@ begin
     )
     port map (
         clk_i               => clk_i,
-        rst_i               => rst_i,       --MACH DEN RESET ERST VOR BEGIN DER FOR SCHLEIFE
+        rst_i               => rst_i,       
         start_sensor_i      => start_sensor_i,
         echo_sensor_i       => echo_sensor_i,
         trigger_sensor_o    => trigger_sensor_o,

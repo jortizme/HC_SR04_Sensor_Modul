@@ -41,11 +41,12 @@ add wave 		      /HC_SR04_tb/DUT/stop_count_travel_time_s
 add wave 		      /HC_SR04_tb/DUT/echo_high_s
 add wave 		      /HC_SR04_tb/DUT/echo_low_s
 add wave 		      /HC_SR04_tb/DUT/start_division_s
+add wave 		      /HC_SR04_tb/DUT/send_pulse_s
+add wave 		      /HC_SR04_tb/DUT/pulse_sent_s
 
 add wave -divider "Arithmetic-Unit"
 add wave -unsigned /HC_SR04_tb/DUT/Arithmetic_Unit/time_measured_s
 add wave -unsigned /HC_SR04_tb/DUT/Arithmetic_Unit/result_div_s
 
-
-run 700 ms
+run 800 ms
 wave zoom full
