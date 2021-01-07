@@ -13,8 +13,6 @@ architecture behavior of HC_SR04_tb is
     constant CONST_VAL          : positive  := 2946347; -- (2^32*34300)/clock frequency rounded -> 34300 cm/s 
     constant CONST_VAL_LENGTH   : positive  := 32;
     constant DATA_WIDTH         : positive  := 16;
-        
-
 
     -----------------Inputs--------------------
     signal clk_i            : std_logic;
@@ -165,7 +163,6 @@ begin
         CONST_VAL           => CONST_VAL,
         CONST_VAL_LENGTH    => CONST_VAL_LENGTH,
         DATA_WIDTH          => DATA_WIDTH
-
     )
     port map (
         clk_i               => clk_i,
@@ -175,7 +172,6 @@ begin
         trigger_sensor_o    => trigger_sensor_o,
         value_measured_o    => value_measured_o,
         value_there_o       => value_there_o
-
     );
 
 end architecture behavior ; -- behavior

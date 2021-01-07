@@ -61,7 +61,12 @@ begin
         end if ;
     end process ; 
 
-
+    --constant BitWidthM1_c   : unsigned(15 downto 0) :=  433;      --(SYS_CLK/BAUDRATE - 1) in this case  115200
+    --constant BitsM1_c       : unsigned(3 downto 0)  :=  7;        --(Amount of bits per frame - 1)
+    --constant Parity_on_c    : std_logic := '0';                   -- Parity on
+    --constant Parity_odd_c   : std_logic := '0';
+    --constant StopBits_c     : unsigned(1 downto 0)  := 0;         --0: 1.0 Stoppbits, 1: 1.5 Stoppbits, 2: 2.0 Stoppbits, 3: 2.5 Stoppbits
+    
     UART_Interface: entity work.UART_Interface
     generic map(
         BitWidthM1_g    => 433, --(SYS_CLK/BAUDRATE - 1) in this case  115200 -> Baudrate

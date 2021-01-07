@@ -3,13 +3,14 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-entity hc_sr04Touart is
+
+entity UART_Interface is
     generic(
-        BitWidthM1_g    : positive;
-        BitsM1_g        : positive; 
-        Parity_on_c     : positive;
-        Parity_odd_c    : positive; 
-        StopBits_c      : positive
+        BitWidthM1_g    : integer;
+        BitsM1_g        : integer; 
+        Parity_on_c     : integer;
+        Parity_odd_c    : integer; 
+        StopBits_c      : integer
     );
     port (
         --Clock ins, SYS_CLK = 50 MHz
@@ -17,9 +18,9 @@ entity hc_sr04Touart is
         rst_i : in std_logic;
 
         Data_i  : in std_logic_vector(31 downto 0);
-        Data_o  : out std_logic(31 downto 0);
+        Data_o  : out std_logic_vector(31 downto 0);
 
-        WEn_i        : in std_logic;
+        WEn_i       : in std_logic;
         Valid_i     : in std_logic;
         Ack_o       : out std_logic;
         Tx_Ready_o  : out std_logic;
@@ -30,15 +31,9 @@ entity hc_sr04Touart is
         TX_o        : out std_logic;  --UART TX
         RX_i        : in std_logic   --UART RX
     );
-end entity hc_sr04Touart;
+end entity UART_Interface;
 
-architecture arch of ent is
-
-    --constant BitWidthM1_c   : unsigned(15 downto 0) :=  433;      --(SYS_CLK/BAUDRATE - 1) in this case  115200
-    --constant BitsM1_c       : unsigned(3 downto 0)  :=  7;        --(Amount of bits per frame - 1)
-    --constant Parity_on_c    : std_logic := '0';                   -- Parity on
-    --constant Parity_odd_c   : std_logic := '0';
-    --constant StopBits_c     : unsigned(1 downto 0)  := 0;         --0: 1.0 Stoppbits, 1: 1.5 Stoppbits, 2: 2.0 Stoppbits, 3: 2.5 Stoppbits
+architecture rtl of UART_Interface is
 
     signal UartCtrl_RG_s    : std_logic_vector(31 downto 0) := (others => '0');
     signal STB_s        : std_logic;
@@ -75,10 +70,10 @@ begin
     Config:block
 
     --Typ for state values
-    type state_type is (CONFIG, DONE, WAIT_ACK, S_ERROR);
+    type state_type is (IDLE, CONFIG, DONE, WAIT_ACK, S_ERROR);
 
     --Intern signals from the control unit
-    signal State            : state_type := CONFIG;
+    signal State            : state_type := IDLE;
     signal Next_State       : state_type;
 
     begin
@@ -91,13 +86,26 @@ begin
 
             case( State ) is
 
+                when IDLE =>
+                            Next_State <= CONFIG;
+
                 when CONFIG =>
                             DCfg_i_s(15 downto 0) <= std_logic_vector(to_unsigned(BitWidthM1_g, 16));
                             DCfg_i_s(19 downto 16) <= std_logic_vector(to_unsigned(BitsM1_g, 4));
-                            DCfg_i_s(20) <= '1' when Parity_on_c = 1 else '0';
-                            DCfg_i_s(21) <= '1' when Parity_odd_c = 1 else '0';
+                            if Parity_on_c = 1 then
+                                DCfg_i_s(20) <= '1';
+                            else
+                                DCfg_i_s(20) <= '0';
+                            end if;
+                            
+                            if Parity_odd_c = 1  then
+                                DCfg_i_s(21) <= '1';
+                            else
+                                DCfg_i_s(21) <= '0';
+                            end if ;
+
                             DCfg_i_s(23 downto 22) <= std_logic_vector(to_unsigned(StopBits_c, 2));
-                            DCfg_i_s(24 downto 25) <= "11"; --enable both interrupts
+                            DCfg_i_s(25 downto 24) <= "11"; --enable both interrupts
 
                             --Set the control bus signals
                             WE_s <= '1';        --Write
@@ -111,11 +119,11 @@ begin
                                 STB_s <= '0';       --strobe signal
                                 Next_State <= DONE;
                             else
-                                Next_State <= WAIT_ACK,
+                                Next_State <= WAIT_ACK;
                             end if ;
 
                 when DONE => Next_State <= DONE;
-                when S_ERROR => null,
+                when S_ERROR => null;
             end case ;
 
         end process;
@@ -133,8 +141,10 @@ begin
                     Config_done_s <= '0';
                 else
                     case( Next_State ) is
-                        when CONFIG  => Config_done_s <= '0';
-                        when DONE    => Config_done_s <= '1';
+                        when IDLE     => Config_done_s <= '0';
+                        when CONFIG     => Config_done_s <= '0';
+                        when WAIT_ACK   => Config_done_s <= '0';
+                        when DONE       => Config_done_s <= '1';
                         when S_ERROR => null;
                     end case ;
                 end if ;
@@ -170,6 +180,6 @@ begin
 
     end block;
 
-end arch ; -- arch
+end architecture rtl ; -- arch
 
 
