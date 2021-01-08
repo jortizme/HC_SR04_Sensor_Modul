@@ -111,22 +111,20 @@ begin
                 config_done_v := 0;
             else
 
-                if config_done_v = 1 then Ack_o <= ACK_s; else Ack_o <= '0'; end if;
-
                 if config_done_v = 0 then
                     
                     STB_s <= '1';
                     WE_s <= '1';
                     ADR_s <= std_logic_vector(CR_Adr_c);
                     Data_i_s <= Ctrl_Reg_Value_c;
-                    --Ack_o <= '0';
+                    Ack_o <= '0';
                     config_done_v := 1;
 
                 else
 
                     STB_s <= Valid_i;
                     WE_s <= WEn_i;
-                    --Ack_o <= ACK_s;
+                    Ack_o <= ACK_s;
 
                     if Valid_i = '1' and WEn_i = '1' then
 
@@ -139,6 +137,8 @@ begin
 
                     else
 
+                        ADR_s <= ADR_s;
+                        Data_i_s <= Data_i_s;
                         STB_s <= '0';
 
                     end if ;

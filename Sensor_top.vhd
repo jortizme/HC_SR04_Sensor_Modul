@@ -6,7 +6,14 @@ use ieee.numeric_std.all;
 
 entity Sensor_top is
     generic(
-        DATA_WIDTH : positive := 16;
+        DATA_WIDTH      : integer := 16;
+        BitWidthM1_g    : integer := 194; --(SYS_FREQUENCY / BAUDRATE - 1) Baudrate -> 256000 
+        BitsM1_g        : integer := 8;
+        Parity_on_c     : integer := 0;
+        Parity_odd_c    : integer := 0;
+        StopBits_c      : integer := 0;
+        CONST_VAL       : integer := 86; --First try would be (2^32 / clk) = 86
+        CONST_VAL_LENGTH : integer := 32
     );
     port (
         clock_i     : std_logic;
@@ -29,18 +36,17 @@ architecture rtl of Sensor_top is
     signal rst_s        : std_logic;
 
     signal str_dly_s    : std_logic;
-    signal str_s    : std_logic;
+    signal str_s        : std_logic;
 
     signal echo_dly_s   : std_logic;
     signal echo_s       : std_logic;
 
-    signal sender_rdy_s : std_logic;
+    signal sender_rdy_s     : std_logic;
     signal value_measured_s : std_logic_vector(DATA_WIDTH - 1 downto 0);
     signal value_there_s    : std_logic;
+    signal value_there_dly_s : std_logic := '0';
     signal Ack_s            : std_logic;
-    signal Valid_s          : std_logic;
     signal Data_input_s     : std_logic_vector(31 downto 0) := (others => '0');
-    signal Config_done_s    : std_logic;
 
 begin
 
@@ -61,19 +67,14 @@ begin
         end if ;
     end process ; 
 
-    --constant BitWidthM1_c   : unsigned(15 downto 0) :=  433;      --(SYS_CLK/BAUDRATE - 1) in this case  115200
-    --constant BitsM1_c       : unsigned(3 downto 0)  :=  7;        --(Amount of bits per frame - 1)
-    --constant Parity_on_c    : std_logic := '0';                   -- Parity on
-    --constant Parity_odd_c   : std_logic := '0';
-    --constant StopBits_c     : unsigned(1 downto 0)  := 0;         --0: 1.0 Stoppbits, 1: 1.5 Stoppbits, 2: 2.0 Stoppbits, 3: 2.5 Stoppbits
     
     UART_Interface: entity work.UART_Interface
     generic map(
-        BitWidthM1_g    => 433, --(SYS_CLK/BAUDRATE - 1) in this case  115200 -> Baudrate
-        BitsM1_g        => 7,   -- Databits (8) - 1
-        Parity_on_c     => 0, -- no parity
-        Parity_odd_c    => 0,
-        StopBits_c      => 0 --0: 1.0 Stoppbits, 1: 1.5 Stoppbits, 2: 2.0 Stoppbits, 3: 2.5 Stoppbits
+        BitWidthM1_g    => BitWidthM1_g, 
+        BitsM1_g        => BitsM1_g,   
+        Parity_on_c     => Parity_on_c, 
+        Parity_odd_c    => Parity_odd_c,
+        StopBits_c      => StopBits_c 
     ) 
     port map(
         --Clock ins, SYS_CLK = 50 MHz
@@ -84,22 +85,19 @@ begin
         Data_o          => open,
 
         WEn_i           => '1',
-        Valid_i         => Valid_s,
+        Valid_i         => value_there_dly_s,
         Ack_o           => Ack_s,
         Tx_Ready_o      => sender_rdy_s,
         Rx_Ready_o      => open,
 
-        Cfg_done_o      => Config_done_s,
-
         TX_o            => --gpio,
         RX_i            => '1'
-
     );
 
     HC_SR04_Modul: entity work.HC_SR04_Modul
     generic map(
-        CONST_VAL           => 86, --First try would be (2^32 / clk) = 86
-        CONST_VAL_LENGTH    => 32,
+        CONST_VAL           => CONST_VAL, --First try would be (2^32 / clk) = 86
+        CONST_VAL_LENGTH    => CONST_VAL_LENGTH,
         DATA_WIDTH          => DATA_WIDTH
     )
     port map(
@@ -111,31 +109,33 @@ begin
         value_measured_o    => value_measured_s,
         value_there_o       => value_there_s
     );
-    
 
-    Sende_Data: process( clk_i )
+    --only the lower 16 bits are gone be written
+    Data_input_s(DATA_WIDTH - 1 downto 0) <= value_measured_s
+
+    Send_Value: process(clk_i)
+
     begin
 
         if rising_edge(clk_i) then
 
-            if Config_done_s = '1' then 
-            
-                if value_there_s = '1' then
-                    Data_input_s(DATA_WIDTH - 1 downto 0) <= value_measured_s
-                end if;
+            if rst_s = '1' then
+                value_there_dly_s <= '0';
 
-                if str_s = '1' and sender_rdy_s = '1' then
-                    Valid_s <= '1';
-                end if;
+            elsif value_there_s = '1' then
+                value_there_dly_s <= value_there_s;
 
-                if Valid_s = '1' and Ack_s = '1' then
-                    Valid_s <= '0';
+            else
+                if Ack_s = '1' then
+                    value_there_dly_s <= '0';
+                else
+                    value_there_dly_s <= value_there_dly_s;
                 end if;
-
+                
             end if;
 
-        end if ;
+        end if;
 
-    end process; -- Sende_Data
+    end process;
 
 end architecture rtl ; -Sensor_top
