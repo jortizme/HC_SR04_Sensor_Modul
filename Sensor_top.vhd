@@ -1,4 +1,3 @@
-# Input signal von außen mussen hier synchrnoiwist werden
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -16,17 +15,15 @@ entity Sensor_top is
         CONST_VAL_LENGTH : integer := 32
     );
     port (
-        clock_i     : std_logic;
-        
-        --reset BUTTON
-        --start sensor BUTTON
-
-        --TRANMITTER GPIO
-
-        --TRIGGER GPIO
-        --ECHO GPIO
-
-
+        SYS_CLK     : std_logic;
+        --Buttons for start_sensor (1) and reset (4)
+        PB : in std_logic_vector(4 downto 1);
+        --TX output
+        GPIO_J3_40 : out std_logic;
+        --Trigger output
+        GPIO_J3_37 : out std_logic;
+        --Echo input
+        GPIO_J3_34 : in std_logic
     );
 end entity Sensor_top;
 
@@ -44,7 +41,7 @@ architecture rtl of Sensor_top is
     signal sender_rdy_s     : std_logic;
     signal value_measured_s : std_logic_vector(DATA_WIDTH - 1 downto 0);
     signal value_there_s    : std_logic;
-    signal value_there_dly_s : std_logic := '0';
+    signal Valid_s          : std_logic := '0';
     signal Ack_s            : std_logic;
     signal Data_input_s     : std_logic_vector(31 downto 0) := (others => '0');
 
@@ -56,9 +53,9 @@ begin
         if rising_edge(clk_i) then
 
             --delay assignment
-            rst_dly_s <= --gpio
-            str_dly_s <= --gpio
-            echo_dly_s <= --input
+            rst_dly_s <= PB(4);
+            str_dly_s <= PB(1);
+            echo_dly_s <= GPIO_J3_34;
 
             --signals to be used
             rst_s <= rst_dly_s;
@@ -78,19 +75,19 @@ begin
     ) 
     port map(
         --Clock ins, SYS_CLK = 50 MHz
-        clk_i           => clk_i,
+        clk_i           => SYS_CLK,
         rst_i           => rst_s,
 
         Data_i          => Data_input_s,
         Data_o          => open,
 
         WEn_i           => '1',
-        Valid_i         => value_there_dly_s,
+        Valid_i         => Valid_s,
         Ack_o           => Ack_s,
         Tx_Ready_o      => sender_rdy_s,
         Rx_Ready_o      => open,
 
-        TX_o            => --gpio,
+        TX_o            => GPIO_J3_40,
         RX_i            => '1'
     );
 
@@ -101,11 +98,11 @@ begin
         DATA_WIDTH          => DATA_WIDTH
     )
     port map(
-        clk_i               => clk_i,
+        clk_i               => SYS_CLK,
         rst_i               => rst_s,
         start_sensor_i      => str_s,
         echo_sensor_i       => echo_s,
-        trigger_sensor_o    => --gpio,
+        trigger_sensor_o    => GPIO_J3_37,
         value_measured_o    => value_measured_s,
         value_there_o       => value_there_s
     );
@@ -114,22 +111,25 @@ begin
     Data_input_s(DATA_WIDTH - 1 downto 0) <= value_measured_s
 
     Send_Value: process(clk_i)
-
+    variable value_there_v  : std_logic := '0';
     begin
 
         if rising_edge(clk_i) then
 
             if rst_s = '1' then
-                value_there_dly_s <= '0';
+                Valid_s <= '0';
 
             elsif value_there_s = '1' then
-                value_there_dly_s <= value_there_s;
+                value_there_v := value_there_s;
 
             else
+                if sender_rdy_s = '1' then
+                    Valid_s <= value_there_v;
+                    value_there_v := '0';
+                end if;
+
                 if Ack_s = '1' then
-                    value_there_dly_s <= '0';
-                else
-                    value_there_dly_s <= value_there_dly_s;
+                    Valid_s <= '0';
                 end if;
                 
             end if;

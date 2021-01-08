@@ -1,3 +1,0 @@
-1. The uart component needs 29 Mhz as a clock. That means i am gonna use the PLL again
-2. The reset is active high
-3,  I am only interested in the transmitter side
