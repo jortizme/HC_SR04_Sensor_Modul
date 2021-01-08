@@ -11,13 +11,13 @@ entity Sensor_top is
         Parity_on_c     : integer := 0;
         Parity_odd_c    : integer := 0;
         StopBits_c      : integer := 0;
-        CONST_VAL       : integer := 86; --First try would be (2^32 / clk) = 86
+        CONST_VAL       : integer := 2946347; -- (2^32*34300)/clock frequency rounded -> 34300 cm/s 
         CONST_VAL_LENGTH : integer := 32
     );
     port (
         SYS_CLK     : std_logic;
         --Buttons for start_sensor (1) and reset (4)
-        PB : in std_logic_vector(4 downto 1);
+        PB : in std_logic_vector(3 downto 0);
         --TX output
         GPIO_J3_40 : out std_logic;
         --Trigger output
@@ -48,13 +48,13 @@ architecture rtl of Sensor_top is
 begin
 
     --Synchronise the input
-    Synchronise: process( clk_i )
+    Synchronise: process( SYS_CLK )
     begin
-        if rising_edge(clk_i) then
+        if rising_edge(SYS_CLK) then
 
             --delay assignment
-            rst_dly_s <= PB(4);
-            str_dly_s <= PB(1);
+            rst_dly_s <= PB(3);
+            str_dly_s <= PB(0);
             echo_dly_s <= GPIO_J3_34;
 
             --signals to be used
@@ -91,7 +91,7 @@ begin
         RX_i            => '1'
     );
 
-    HC_SR04_Modul: entity work.HC_SR04_Modul
+    HC_SR04_Modul: entity work.HC_SR04
     generic map(
         CONST_VAL           => CONST_VAL, --First try would be (2^32 / clk) = 86
         CONST_VAL_LENGTH    => CONST_VAL_LENGTH,
@@ -108,13 +108,13 @@ begin
     );
 
     --only the lower 16 bits are gone be written
-    Data_input_s(DATA_WIDTH - 1 downto 0) <= value_measured_s
+    Data_input_s(DATA_WIDTH - 1 downto 0) <= value_measured_s;
 
-    Send_Value: process(clk_i)
+    Send_Value: process(SYS_CLK)
     variable value_there_v  : std_logic := '0';
     begin
 
-        if rising_edge(clk_i) then
+        if rising_edge(SYS_CLK) then
 
             if rst_s = '1' then
                 Valid_s <= '0';
@@ -138,4 +138,4 @@ begin
 
     end process;
 
-end architecture rtl ; -Sensor_top
+end architecture rtl ; 
