@@ -10,8 +10,8 @@ use work.txt_util_pack.all;
 architecture rtl of UART_Interface_tb is
 
     constant CLOCK_PERIOD   : time      := 20 ns;  -- 50 MHz clock frequency
-    constant BitWidthM1_g   : integer := 194; --(SYS_FREQUENCY / BAUDRATE - 1) Baudrate -> 256000
-    constant BitsM1_g       : integer := 8;
+    constant BitWidthM1_g   : integer := 433; --(SYS_FREQUENCY / BAUDRATE - 1)
+    constant BitsM1_g       : integer := 7;
     constant Parity_on_c    : integer := 0;
     constant Parity_odd_c   : integer := 0;
     constant StopBits_c     : integer := 0;
@@ -19,9 +19,9 @@ architecture rtl of UART_Interface_tb is
     -----------------Inputs--------------------
     signal clk_i    : std_logic;
     signal rst_i    : std_logic;
-    signal Data_i   : std_logic_vector(31 downto 0) := (others => '0');
-    signal WEn_i    : std_logic := '0';
-    signal Valid_i  : std_logic := '0';
+    signal Data_i   : std_logic_vector(31 downto 0);
+    signal WEn_i    : std_logic;
+    signal Valid_i  : std_logic;
     
     -----------------Outputs--------------------
     signal Ack_o        : std_logic;
@@ -55,7 +55,11 @@ begin
             Valid_i <= '1';
             Data_i <= tests(i);
 
+            wait until falling_edge(clk_i);
+
             wait until Ack_o = '1';
+
+            --assert Ack_o = '1' report "UART is not responding" severity failure;
 
             Valid_i <= '0';
 
@@ -66,12 +70,12 @@ begin
     begin
 
         --Reset the sensor module
-        -- wait until falling_edge(clk_i);
-        rst_i <= '1';
-        wait until falling_edge(clk_i);
-        rst_i <= '0';
+       -- wait until falling_edge(clk_i);
+       -- rst_i <= '1';
+      --  wait until falling_edge(clk_i);
+     --   rst_i <= '0';
 
-        wait until falling_edge(clk_i);
+        wait until Cfg_done_o = '1';
 
         WEn_i <= '1';
 

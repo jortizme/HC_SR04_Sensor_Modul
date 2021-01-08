@@ -28,7 +28,6 @@ configure wave -timelineunits ms
 
 add wave /UART_Interface_tb/clk_i
 add wave /UART_Interface_tb/rst_i
-add wave /UART_Interface_tb/Cfg_done_o
 add wave -hexadecimal /UART_Interface_tb/Data_i
 add wave /UART_Interface_tb/WEn_i
 add wave /UART_Interface_tb/Valid_i
@@ -41,7 +40,31 @@ add wave /UART_Interface_tb/DUT/WE_s
 add wave /UART_Interface_tb/DUT/STB_s
 add wave -hexadecimal /UART_Interface_tb/DUT/ADR_s
 add wave -hexadecimal /UART_Interface_tb/DUT/Data_i_s
-add wave /UART_Interface_tb/DUT/Config/State
+add wave /UART_Interface_tb/DUT/ACK_s
+
+add wave -divider "UART"
+add wave /UART_Interface_tb/DUT/UART/CLK_I
+add wave /UART_Interface_tb/DUT/UART/RST_I
+add wave /UART_Interface_tb/DUT/UART/STB_I
+add wave /UART_Interface_tb/DUT/UART/WE_I
+add wave -hexadecimal /UART_Interface_tb/DUT/UART/ADR_I
+add wave -hexadecimal /UART_Interface_tb/DUT/UART/DAT_I
+add wave -hexadecimal /UART_Interface_tb/DUT/UART/DAT_O
+add wave /UART_Interface_tb/DUT/UART/ACK_O
+add wave /UART_Interface_tb/DUT/UART/TX_Interrupt
+add wave /UART_Interface_tb/DUT/UART/RX_Interrupt
+add wave /UART_Interface_tb/DUT/UART/RxD
+add wave /UART_Interface_tb/DUT/UART/TxD
+add wave /UART_Interface_tb/DUT/UART/Schreibe_Daten
+
+
+
+add wave -divider "Serieller Sender"
+
+add wave /UART_Interface_tb/DUT/UART/Sender/Steuerwerk/Zustand
+add wave /UART_Interface_tb/DUT/UART/Sender/Steuerwerk/Folgezustand
+add wave -unsigned /UART_Interface_tb/DUT/UART/Sender/Rechenwerk/ZaehlerBitbreite/Q
+add wave /UART_Interface_tb/DUT/TX_o
 
 run 500 us
 wave zoom full
