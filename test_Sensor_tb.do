@@ -47,6 +47,19 @@ add wave -unsigned /Sensor_top_tb/DUT/Data_input_s
 #add wave  -hexadecimal /Sensor_top_tb/DUT/UART_Interface/DataTransmision/Ctrl_Reg_Value_c
 #add wave  -hexadecimal /Sensor_top_tb/DUT/UART_Interface/Data_i_s
 
+add wave -divider "HC_SR04_Modul"
+
+add wave /Sensor_top_tb/DUT/HC_SR04_Modul/echo_high_s
+add wave /Sensor_top_tb/DUT/HC_SR04_Modul/echo_low_s
+add wave /Sensor_top_tb/DUT/HC_SR04_Modul/count_travel_time_s
+add wave /Sensor_top_tb/DUT/HC_SR04_Modul/stop_count_travel_time_s
+add wave /Sensor_top_tb/DUT/HC_SR04_Modul/start_division_s
+add wave -unsigned /Sensor_top_tb/DUT/HC_SR04_Modul/Arithmetic_Unit/Check_result/result
+add wave -unsigned /Sensor_top_tb/DUT/HC_SR04_Modul/value_measured_o
+add wave /Sensor_top_tb/DUT/HC_SR04_Modul/Steuerwerk/State
+add wave /Sensor_top_tb/DUT/HC_SR04_Modul/Steuerwerk/Next_State
+add wave /Sensor_top_tb/DUT/HC_SR04_Modul/Steuerwerk/value_there_s
+
 
 add wave -divider "UART"
 add wave -hexadecimal /Sensor_top_tb/DUT/UART_Interface/UART/ADR_I
@@ -54,6 +67,7 @@ add wave  /Sensor_top_tb/DUT/UART_Interface/UART/WE_I
 add wave /Sensor_top_tb/DUT/UART_Interface/UART/RST_I
 add wave -unsigned /Sensor_top_tb/DUT/UART_Interface/UART/DAT_I
 add wave /Sensor_top_tb/DUT/UART_Interface/UART/ACK_O
+add wave /Sensor_top_tb/DUT/UART_Interface/UART/STB_I
 add wave /Sensor_top_tb/DUT/UART_Interface/UART/TX_Interrupt
 add wave /Sensor_top_tb/DUT/UART_Interface/UART/TxD
 
@@ -61,5 +75,5 @@ add wave -divider "Serieller_Sender"
 add wave /Sensor_top_tb/DUT/UART_Interface/UART/Sender/Steuerwerk/Zustand
 
 
-run 800 ms
+run 500 ms
 wave zoom full
