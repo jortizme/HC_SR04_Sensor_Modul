@@ -10,9 +10,9 @@ use work.txt_util_pack.all;
 architecture behavior of HC_SR04_tb is
 
     constant CLOCK_PERIOD       : time      := 20 ns;  -- 50 MHz clock frequency
-    constant CONST_VAL          : positive  := 2946347; -- (2^32*34300)/clock frequency rounded -> 34300 cm/s 
-    constant CONST_VAL_LENGTH   : positive  := 32;
-    constant DATA_WIDTH         : positive  := 16;
+    constant CONST_VAL          : integer  := 2946347; -- (2^32*34300)/clock frequency rounded -> 34300 cm/s 
+    constant CONST_VAL_LENGTH   : integer  := 32;
+    constant DATA_WIDTH         : integer  := 16;
 
     -----------------Inputs--------------------
     signal clk_i            : std_logic;

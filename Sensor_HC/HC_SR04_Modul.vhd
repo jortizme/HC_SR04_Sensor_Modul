@@ -11,9 +11,9 @@ use ieee.numeric_std.all;
 
 entity HC_SR04 is
     generic(
-        CONST_VAL           : positive;  -- (2^32*34300)/clock frequency rounded -> 34300 cm/s = 2946347
-        CONST_VAL_LENGTH    : positive;   -- 32
-        DATA_WIDTH          : positive    --Lets start with 16
+        CONST_VAL           : integer;  -- (2^32*34300)/clock frequency rounded -> 34300 cm/s = 2946347
+        CONST_VAL_LENGTH    : integer;   -- 32
+        DATA_WIDTH          : integer    --Lets start with 16
     );
     port (
         clk_i               : in std_logic;

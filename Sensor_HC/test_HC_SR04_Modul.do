@@ -2,7 +2,7 @@ if {![file exists work]} {
 	vlib work 
 }
 
-vcom  Divider.vhd
+vcom  ../Divider/Divider.vhd
 vcom  HC_SR04_Modul.vhd
 vcom txt_util_pack.vhd
 vcom  HC_SR04_Modul_TB.vhd
@@ -48,5 +48,18 @@ add wave -divider "Arithmetic-Unit"
 add wave -unsigned /HC_SR04_tb/DUT/Arithmetic_Unit/time_measured_s
 add wave -unsigned /HC_SR04_tb/DUT/Arithmetic_Unit/result_div_s
 
-run 800 ms
+
+if {0} {
+add wave -divider "Divider"
+add wave -unsigned /HC_SR04_tb/DUT/Arithmetic_Unit/Divider/CONST_VAL
+add wave -unsigned /HC_SR04_tb/DUT/Arithmetic_Unit/Divider/CONST_VAL_LENGTH
+add wave -unsigned /HC_SR04_tb/DUT/Arithmetic_Unit/Divider/VAR_VAL_LENTH
+add wave -unsigned /HC_SR04_tb/DUT/Arithmetic_Unit/Divider/Dividor/const_value_c
+add wave -unsigned /HC_SR04_tb/DUT/Arithmetic_Unit/Divider/Dividor/const_summand_c
+add wave -unsigned /HC_SR04_tb/DUT/Arithmetic_Unit/Divider/val_i
+add wave -unsigned /HC_SR04_tb/DUT/Arithmetic_Unit/Divider/Dividor/const_result_s
+add wave -unsigned /HC_SR04_tb/DUT/Arithmetic_Unit/Divider/result_o
+}
+
+run 500 ms
 wave zoom full
