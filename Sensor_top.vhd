@@ -17,7 +17,7 @@ entity Sensor_top is
     port (
         SYS_CLK     : std_logic;
         --Buttons for start_sensor (1) and reset (4)
-        PB : in std_logic_vector(3 downto 0);
+        PB : in std_logic_vector(4 downto 1);
         --TX output
         GPIO_J3_40 : out std_logic;
         --Trigger output
@@ -53,8 +53,8 @@ begin
         if rising_edge(SYS_CLK) then
 
             --delay assignment
-            rst_dly_s <= PB(3);
-            str_dly_s <= PB(0);
+            rst_dly_s <= PB(4);
+            str_dly_s <= PB(1);
             echo_dly_s <= GPIO_J3_34;
 
             --signals to be used

@@ -29,9 +29,9 @@ end entity HC_SR04;
 architecture rtl of HC_SR04 is
 
     -- Returns number of bits required to represent val in binary vector
-    function bits_amount(val : natural) return natural is
-        variable res_v      : natural; --Result
-        variable remain_v   : natural; --Remainder used in iteration
+    function bits_amount(val : integer) return integer is
+        variable res_v      : integer; --Result
+        variable remain_v   : integer; --Remainder used in iteration
     begin
         res_v := 0;
         remain_v := val;
