@@ -22,7 +22,7 @@ architecture behavior of Sensor_top_tb is
 
     -----------------Inputs--------------------
     signal SYS_CLK      : std_logic;
-    signal PB           : std_logic_vector(3 downto 0) := (others => '0');
+    signal PB           : std_logic_vector(3 downto 0) := (others => '1');
     signal echo_i       : std_logic := '0';
 
     
@@ -68,23 +68,17 @@ begin
 
             if con_measu = '0' then
 
-                PB(0) <= '0';
+                PB(0) <= '1';
 
                 --To make sure that the sensor doens't trigger
                 --unless the signal start_sensor_i tells it to
                 wait for CLOCK_PERIOD * (i+1);
     
-                --Verify
-                --assert trigger_o = '0' and value_there_o  = '0' report "The sensor triggers without autorisation" severity failure;
-    
-                --start the sensor and wait until the trigger comes
-                PB(0) <= '1';
+                PB(0) <= '0';
 
                 wait on trigger_o;
 
-                --assert trigger_sensor_o = '1' and value_there_o  = '0' report "The sensor triggers without autorisation" severity failure;
-
-                PB(0) <= '0';
+                PB(0) <= '1';
 
             end if;
 
@@ -105,14 +99,6 @@ begin
             --Stop the simulation of the wait time for the reflected wave
             echo_i <= '0';
 
-            --wait until the measured distance is available
-            --wait until value_there_o = '1';
-
-            --value_measured_v    := unsigned(value_measured_o);
-
-            --assert value_measured_v = to_unsigned(tests(i).dist_ref,DATA_WIDTH)report "The sensor module measured false distance" severity failure;
-
-
             if con_measu = '1' then
                 wait until trigger_o = '1';
             end if;
@@ -123,9 +109,9 @@ begin
 
         --Reset the sensor module
         wait until falling_edge(SYS_CLK);
-        PB(3) <= '1';
-        wait until falling_edge(SYS_CLK);
         PB(3) <= '0';
+        wait until falling_edge(SYS_CLK);
+        PB(3) <= '1';
 
         echo_i <= '0';
 
@@ -138,14 +124,14 @@ begin
 
         --Reset the sensor module again
         wait until falling_edge(SYS_CLK);
-        PB(3) <= '1';
-        wait until falling_edge(SYS_CLK);
         PB(3) <= '0';
+        wait until falling_edge(SYS_CLK);
+        PB(3) <= '1';
 
         echo_i <= '0';
 
         --the start signal remains high during this second test
-        PB(0) <= '1';
+        PB(0) <= '0';
 
         for i in tests'range loop
             execute_test(i, '1');
