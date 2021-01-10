@@ -9,10 +9,11 @@ use work.txt_util_pack.all;
 
 architecture behavior of Sensor_top_tb is
 
-    constant CLOCK_PERIOD       : time      := 20 ns;  -- 50 MHz clock frequency
-    constant CONST_VAL          : integer  := 2946347; -- (2^32*34300)/clock frequency rounded -> 34300 cm/s 
-    constant CONST_VAL_LENGTH   : integer  := 32;
-    constant DATA_WIDTH         : integer  := 16;
+    constant CLOCK_PERIOD       : time    := 20 ns;  -- 50 MHz clock frequency
+    constant CONST_VAL          : integer := 2946347; -- (2^32*34300)/clock frequency rounded -> 34300 cm/s 
+    constant MEASURE_FREQ       : integer := 746269;   -- (clock frequency/desired frequency)
+    constant CONST_VAL_LENGTH   : integer := 32;
+    constant DATA_WIDTH         : integer := 16;
     constant BitWidthM1_g       : integer := 194; --(SYS_FREQUENCY / BAUDRATE - 1) Baudrate -> 256000
     constant BitsM1_g           : integer := 8;
     constant Parity_on_c        : integer := 0;
@@ -22,7 +23,7 @@ architecture behavior of Sensor_top_tb is
 
     -----------------Inputs--------------------
     signal SYS_CLK      : std_logic;
-    signal PB           : std_logic_vector(3 downto 0) := (others => '0');
+    signal PB           : std_logic_vector(3 downto 0) := (others => '1');
     signal echo_i       : std_logic := '0';
 
     
@@ -39,18 +40,18 @@ architecture behavior of Sensor_top_tb is
     type testcase_vector is array(natural range <>) of textcase_record;
 
     constant tests : testcase_vector(0 to 13) := (
-    0=>(20 ms, 343),
-    1=>(10 ms, 171),
+    0=>(3 ms, 51),
+    1=>(7 ms, 120),
     2=>(5 ms, 85),
     3=>(4 ms, 68),
     4=>(17 ms, 291),
     5=>(12 ms, 206),
-    6=>(7 ms, 120),
+    6=>(10 ms, 171),
     7=>(2 ms, 34),
     8=>(1 ms, 17),
     9=>(500 us,8),
     10=>(150 us, 2),
-    11=>(3 ms, 51),
+    11=>(20 ms, 343),
     12=>(24 ms, 0),
     13=>(100 ms, 0)
     );
@@ -60,33 +61,11 @@ begin
     Stimulate: process
 
         --Simulate the a measure cycle's behavior 
-        procedure execute_test(i: integer; con_measu : std_logic) is
+        procedure execute_test(i: integer) is
             
         variable value_measured_v   : unsigned(DATA_WIDTH - 1 downto 0);   
 
         begin
-
-            if con_measu = '0' then
-
-                PB(0) <= '0';
-
-                --To make sure that the sensor doens't trigger
-                --unless the signal start_sensor_i tells it to
-                wait for CLOCK_PERIOD * (i+1);
-    
-                --Verify
-                --assert trigger_o = '0' and value_there_o  = '0' report "The sensor triggers without autorisation" severity failure;
-    
-                --start the sensor and wait until the trigger comes
-                PB(0) <= '1';
-
-                wait on trigger_o;
-
-                --assert trigger_sensor_o = '1' and value_there_o  = '0' report "The sensor triggers without autorisation" severity failure;
-
-                PB(0) <= '0';
-
-            end if;
 
             --wait until the trigger comes
             wait until trigger_o = '0';
@@ -105,50 +84,28 @@ begin
             --Stop the simulation of the wait time for the reflected wave
             echo_i <= '0';
 
-            --wait until the measured distance is available
-            --wait until value_there_o = '1';
+            wait until trigger_o = '1';
 
-            --value_measured_v    := unsigned(value_measured_o);
-
-            --assert value_measured_v = to_unsigned(tests(i).dist_ref,DATA_WIDTH)report "The sensor module measured false distance" severity failure;
-
-
-            if con_measu = '1' then
-                wait until trigger_o = '1';
-            end if;
 
         end procedure;
         
     begin
 
-        --Reset the sensor module
-        wait until falling_edge(SYS_CLK);
-        PB(3) <= '1';
-        wait until falling_edge(SYS_CLK);
-        PB(3) <= '0';
-
-        echo_i <= '0';
-
-        for i in tests'range loop
-
-            execute_test(i, '0');
-            report "Normal Test " & str(i) & " completed";
-        end loop;
-
-
         --Reset the sensor module again
         wait until falling_edge(SYS_CLK);
-        PB(3) <= '1';
-        wait until falling_edge(SYS_CLK);
         PB(3) <= '0';
+        wait until falling_edge(SYS_CLK);
+        PB(3) <= '1';
 
         echo_i <= '0';
 
         --the start signal remains high during this second test
-        PB(0) <= '1';
+        PB(0) <= '0';
+
+        wait until falling_edge(SYS_CLK);
 
         for i in tests'range loop
-            execute_test(i, '1');
+            execute_test(i);
             report "Continuous Test " & str(i) & " completed";
         end loop;
 
@@ -173,7 +130,8 @@ begin
         Parity_odd_c    => Parity_odd_c,
         StopBits_c      => StopBits_c,
         CONST_VAL       => CONST_VAL,
-        CONST_VAL_LENGTH => CONST_VAL_LENGTH
+        CONST_VAL_LENGTH => CONST_VAL_LENGTH,
+        MEASURE_FREQ    => MEASURE_FREQ
     )
     port map(
         SYS_CLK     => SYS_CLK, 

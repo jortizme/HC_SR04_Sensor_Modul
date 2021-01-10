@@ -12,7 +12,8 @@ entity Sensor_top is
         Parity_odd_c    : integer := 0;
         StopBits_c      : integer := 0;
         CONST_VAL       : integer := 2946347; -- (2^32*34300)/clock frequency rounded -> 34300 cm/s 
-        CONST_VAL_LENGTH : integer := 32
+        CONST_VAL_LENGTH : integer := 32;
+        MEASURE_FREQ    : integer := 2000000 -- (clock frequency/desired frequency)
     );
     port (
         SYS_CLK    : in std_logic;
@@ -72,8 +73,8 @@ begin
             USER_LED(8) <= PB(4);
 
             --signals to be used
-            rst_s <= rst_dly_s
-            str_s <= str_dly_s
+            rst_s <= rst_dly_s;
+            str_s <= str_dly_s;
             echo_s <= echo_dly_s;
 
 
@@ -112,7 +113,8 @@ begin
     generic map(
         CONST_VAL           => CONST_VAL, --First try would be (2^32 / clk) = 86
         CONST_VAL_LENGTH    => CONST_VAL_LENGTH,
-        DATA_WIDTH          => DATA_WIDTH
+        DATA_WIDTH          => DATA_WIDTH,
+        MEASURE_FREQ        => MEASURE_FREQ
     )
     port map(
         clk_i               => SYS_CLK,

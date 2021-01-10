@@ -49,6 +49,8 @@ add wave -unsigned /Sensor_top_tb/DUT/Data_input_s
 
 add wave -divider "HC_SR04_Modul"
 
+add wave /Sensor_top_tb/DUT/HC_SR04_Modul/start_sensor_i
+add wave /Sensor_top_tb/DUT/HC_SR04_Modul/period_done_s
 add wave /Sensor_top_tb/DUT/HC_SR04_Modul/echo_high_s
 add wave /Sensor_top_tb/DUT/HC_SR04_Modul/echo_low_s
 add wave /Sensor_top_tb/DUT/HC_SR04_Modul/count_travel_time_s
@@ -75,5 +77,5 @@ add wave -divider "Serieller_Sender"
 add wave /Sensor_top_tb/DUT/UART_Interface/UART/Sender/Steuerwerk/Zustand
 
 
-run 600 ms
+run 300 ms
 wave zoom full

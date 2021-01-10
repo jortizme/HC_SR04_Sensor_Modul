@@ -12,8 +12,9 @@ use ieee.numeric_std.all;
 entity HC_SR04 is
     generic(
         CONST_VAL           : integer;  -- (2^32*34300)/clock frequency rounded -> 34300 cm/s = 2946347
-        CONST_VAL_LENGTH    : integer;   -- 32
-        DATA_WIDTH          : integer    --Lets start with 16
+        CONST_VAL_LENGTH    : integer;  -- 32
+        DATA_WIDTH          : integer;  -- 16
+        MEASURE_FREQ        : integer   -- (clock frequency/desired frequency)
     );
     port (
         clk_i               : in std_logic;
@@ -53,6 +54,7 @@ architecture rtl of HC_SR04 is
     signal echo_low_s               : std_logic;
     signal send_pulse_s             : std_logic;
     signal pulse_sent_s             : std_logic;
+    signal period_done_s            : std_logic;
     signal start_division_s : std_logic := '0';
     
 begin
@@ -65,6 +67,33 @@ begin
     signal echo_dly_s       : std_logic := '0';
 
     begin 
+
+
+        Sensor_Freq: process( clk_i )
+        constant max_val_c  : unsigned(bits_amount(MEASURE_FREQ) - 1 downto 0) := to_unsigned(MEASURE_FREQ, bits_amount(MEASURE_FREQ));
+        variable counter_v  : unsigned(max_val_c'length - 1 downto 0)   := max_val_c;
+        begin
+
+            if rising_edge(clk_i) then
+                
+                period_done_s <= '0';
+
+                if rst_i = '1' then
+                    counter_v := max_val_c;
+
+                elsif start_sensor_i = '1' then
+
+                    counter_v := counter_v - 1;
+
+                    if counter_v = 0 then
+                        period_done_s <= '1';
+                        counter_v := max_val_c;
+                    end if;
+                    
+                end if ;
+            end if ;
+            
+        end process ; -- Sensor_Freq
 
         --For this measurement, the trigger has to be a square 
         --pulse. It has to remain high for at least 10us, that's
@@ -199,7 +228,7 @@ begin
         end process;
 
         --Process to calculate the next state and the mealy outputs
-        Transition : process( State, echo_high_s, echo_low_s, pulse_sent_s, start_sensor_i)
+        Transition : process( State, echo_high_s, echo_low_s, pulse_sent_s, start_sensor_i, period_done_s)
         begin
 
             --Default-Values for the next state and mealy-output
@@ -249,16 +278,16 @@ begin
                             end if ;
                             
                 when DIVIDE  => 
-
                             start_division_s <= '1'; 
                             Next_State <= DONE;
 
                 when DONE  => 
 
-                            if start_sensor_i = '1' then
-                                Next_State <= SEND_PULSE;
-                            else
+                            if period_done_s = '1' then
                                 Next_State <= IDLE;
+
+                            else
+                                Next_State <= DONE;
                             end if;
 
                 when S_ERROR => null;
