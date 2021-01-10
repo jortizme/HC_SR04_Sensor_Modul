@@ -26,7 +26,6 @@ architecture rtl of UART_Interface_tb is
     -----------------Outputs--------------------
     signal Ack_o        : std_logic;
     signal Tx_Ready_o   : std_logic;
-    signal Cfg_done_o   : std_logic;
 
     type testcase_vector is array(natural range <>) of std_logic_vector(31 downto 0);
 
@@ -118,8 +117,6 @@ begin
             Ack_o       => Ack_o,
             Tx_Ready_o  => Tx_Ready_o,
             Rx_Ready_o  => open,
-    
-            Cfg_done_o  => Cfg_done_o,
     
             TX_o        => open,
             RX_i        => '1'

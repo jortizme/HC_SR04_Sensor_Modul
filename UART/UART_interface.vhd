@@ -26,8 +26,6 @@ entity UART_Interface is
         Tx_Ready_o  : out std_logic;
         Rx_Ready_o  : out std_logic;
 
-        Cfg_done_o  : out std_logic;
-
         TX_o        : out std_logic;  --UART TX
         RX_i        : in std_logic   --UART RX
     );

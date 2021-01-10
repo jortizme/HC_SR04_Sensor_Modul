@@ -182,9 +182,9 @@ begin
         --TX output
         GPIO_J3_40  => Tx_o,
         --Trigger output 
-        GPIO_J3_37  => trigger_o,
+        GPIO_J3_25  => trigger_o,
         --Echo input
-        GPIO_J3_34  => echo_i
+        GPIO_J3_15  => echo_i
     );
 
 end architecture behavior ; -- behavior

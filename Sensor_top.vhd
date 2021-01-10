@@ -15,15 +15,22 @@ entity Sensor_top is
         CONST_VAL_LENGTH : integer := 32
     );
     port (
-        SYS_CLK     : std_logic;
+        SYS_CLK    : in std_logic;
         --Buttons for start_sensor (1) and reset (4)
         PB : in std_logic_vector(4 downto 1);
+
+        --LED outs
+        USER_LED    :   out std_logic_vector(8 downto 1);
+
         --TX output
         GPIO_J3_40 : out std_logic;
+		  
         --Trigger output
-        GPIO_J3_37 : out std_logic;
-        --Echo input
-        GPIO_J3_34 : in std_logic
+        GPIO_J3_25 : out std_logic;
+		  
+		   --Echo input
+        GPIO_J3_15 : in std_logic
+		         	  
     );
 end entity Sensor_top;
 
@@ -52,15 +59,25 @@ begin
     begin
         if rising_edge(SYS_CLK) then
 
+            --The LEDs are off with the value '1'
+            USER_LED <= (others => '1');
+
             --delay assignment
-            rst_dly_s <= PB(4);
-            str_dly_s <= PB(1);
-            echo_dly_s <= GPIO_J3_34;
+			str_dly_s <= not PB(1);
+            rst_dly_s <= not PB(4);
+            echo_dly_s <= GPIO_J3_15;
+
+            --LEDs to see when the button is pushed
+            USER_LED(1) <= PB(1);
+            USER_LED(8) <= PB(4);
 
             --signals to be used
-            rst_s <= rst_dly_s;
-            str_s <= str_dly_s;
+            rst_s <= rst_dly_s
+            str_s <= str_dly_s
             echo_s <= echo_dly_s;
+
+
+				
         end if ;
     end process ; 
 
@@ -102,7 +119,7 @@ begin
         rst_i               => rst_s,
         start_sensor_i      => str_s,
         echo_sensor_i       => echo_s,
-        trigger_sensor_o    => GPIO_J3_37,
+        trigger_sensor_o    => GPIO_J3_25,
         value_measured_o    => value_measured_s,
         value_there_o       => value_there_s
     );
