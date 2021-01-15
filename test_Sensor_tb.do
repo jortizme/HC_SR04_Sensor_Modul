@@ -75,5 +75,5 @@ add wave -divider "Serieller_Sender"
 add wave /Sensor_top_tb/DUT/UART_Interface/UART/Sender/Steuerwerk/Zustand
 
 
-run 600 ms
+run 150 ms
 wave zoom full

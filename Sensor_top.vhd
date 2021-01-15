@@ -72,8 +72,8 @@ begin
             USER_LED(8) <= PB(4);
 
             --signals to be used
-            rst_s <= rst_dly_s
-            str_s <= str_dly_s
+            rst_s <= rst_dly_s;
+            str_s <= str_dly_s;
             echo_s <= echo_dly_s;
 
 
